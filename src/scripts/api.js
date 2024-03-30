@@ -1,3 +1,135 @@
+const routes = {
+  champions: "http://sdw24.sa-east-1.elasticbeanstalk.com/champions",
+  ask: "http://sdw24.sa-east-1.elasticbeanstalk.com/champions/{id}/ask",
+};
+
+const state = {
+  values: {
+    champions: [],
+  },
+  views: {
+    response: document.querySelector(".text-reponse"),
+    question: document.getElementById("text-request"),
+    avatar: document.getElementById("avatar"),
+    carousel: document.getElementById("carousel-cards-content"),
+  },
+};
+
+const apiService = {
+  async getChampions() {
+    const route = routes.champions;
+    const response = await fetch(route);
+
+    return await response.json();
+  },
+
+  async askChampion(id, message) {
+    const route = routes.ask.replace("{id}", id);
+
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ question: message }),
+    };
+
+    const response = await fetch(route, options);
+
+    return await response.json();
+  },
+};
+
+async function main() {
+  await loadChampions();
+  await renderChampions();
+  await loadCarrousel();
+}
+
+async function loadChampions() {
+  const data = await apiService.getChampions();
+
+  state.values.champions = data;
+}
+
+async function renderChampions() {
+  const championsData = state.values.champions;
+  const elements = championsData.map(
+    (character) =>
+      `
+        <div class="timeline-carousel__item" onClick="onChangeChampionSelected(${character.id}, '${character.imageUrl}')">
+          <div class="timeline-carousel__image">
+            <div
+              class="media-wrapper media-wrapper--overlay"
+              style="
+                background: url('${character.imageUrl}')
+                  center center;
+                background-size: cover;
+              "
+            ></div>
+          </div>
+          <div class="timeline-carousel__item-inner">
+            <span class="name">${character.name}</span>
+            <span class="role">${character.role}</span>
+            <p>${character.lore}</p>
+          </div>
+        </div>
+      `
+  );
+
+  state.views.carousel.innerHTML = elements.join(" ");
+
+  // setando um avatar default ao carregar a tela
+  onChangeChampionSelected(championsData[0].id, championsData[0].imageUrl);
+}
+
+async function onChangeChampionSelected(id, imageUrl) {
+  state.views.avatar.style.backgroundImage = `url('${imageUrl}')`;
+
+  // atualizando id do avatar diretamente via HTML
+  //  guardando variáveis direto na DOM
+  // considerando boas práticas de código, seria melhor guardar tudo no JS
+  state.views.avatar.dataset.id = id;
+
+  await resetForm();
+}
+
+async function resetForm() {
+  state.views.question.value = "";
+  state.views.response.textContent = await getRandomQuote();
+}
+
+async function getRandomQuote() {
+  const quotes = [
+    "Manda ver meu nobre",
+    "Pode vir quente que estou fervendo",
+    "Aguardo sua pergunta",
+    "Espero ansiosamente por sua pergunta",
+    "Estou começando a ficar com tédio...",
+    "Tenho vidas a salvas, vá depressa com isso",
+    "Não vai ficar aí o dia todo, vai?",
+    "Talvez seja melhor ir jogar Dota...",
+    "Ainda estou tentando entender como essa geringonça funciona",
+    "Vamo meu chapa",
+  ];
+
+  const randomIndex = Math.floor(Math.random() * quotes.length);
+
+  return quotes[randomIndex];
+}
+
+async function fetchAskChampion() {
+  document.body.style.cursor = "wait";
+
+  const id = state.views.avatar.dataset.id;
+  const message = state.views.question.value;
+  const response = await apiService.askChampion(id, message);
+
+  state.views.response.textContent = response.answer;
+
+  document.body.style.cursor = "default";
+}
+
 async function loadCarrousel() {
   const caroujs = (el) => {
     return $("[data-js=" + el + "]");
@@ -28,4 +160,4 @@ async function loadCarrousel() {
   });
 }
 
-loadCarrousel();
+main();
